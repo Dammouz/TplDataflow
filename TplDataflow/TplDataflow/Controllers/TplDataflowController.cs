@@ -11,7 +11,7 @@ using TplDataflow.Model;
 namespace TplDataflow.Controllers
 {
     [Produces("application/json")]
-    [Route("api/tplDataflow")]
+    [Route("tpldataflow-api")]
     [ApiController]
     public class TplDataflowController : ControllerBase
     {
@@ -36,11 +36,14 @@ namespace TplDataflow.Controllers
         private const char SplitterSeparator = '#';
 
         /// <summary>
-        /// Post method to retrieve metadata from a list of image URL.
+        /// Post method to illustrate <see cref="TransformBlock{TInput, TOutput}" />. Retrieves a metadata from an input string to split.
         /// </summary>
         /// <param name="stringToSplit">Input string to split by the char '#'<br />
-        /// NameOfTheImage#InitialUrl#Folder path with spaces</param>
-        /// <returns></returns>
+        ///   <code>
+        ///   NameOfTheImage#InitialUrl#Folder path with spaces
+        ///   </code>
+        /// </param>
+        /// <returns>Returns a <see cref="IMetaData" /></returns>
         [HttpPost]
         [Route(nameof(TransformBlockUsage))]
         public IMetaData TransformBlockUsage(string stringToSplit)
@@ -70,25 +73,65 @@ namespace TplDataflow.Controllers
 
         #endregion TransformBlockUsage
 
+        #region ActionBlockUsage
+
+        private const string SavedTextDirectory = @".\_dataflowTxt\";
+        private readonly string BasedFileName = $"{nameof(ActionBlockUsage)}-";
+
+        /// <summary>
+        /// Post method to illustrate <see cref="ActionBlock{TInput}" />. Generates a text file.
+        /// </summary>
+        /// <param name="aNumber">A number to determine how many times lines will be repeated</param>
+        [HttpPost]
+        [Route(nameof(ActionBlockUsage))]
+        public void ActionBlockUsage(int aNumber)
+        {
+            Console.WriteLine($"Inside {nameof(TplDataflowController)} - {nameof(ActionBlockUsage)}");
+
+            // Create the members of the pipeline.
+            var transformIntIntoString = new TransformBlock<int, string>(anInt =>
+                Functions.TransformIntIntoRepeatedLines(anInt)
+            );
+            var actionBlock = new ActionBlock<string>(stringifiedInt =>
+                Functions.ModifyString(stringifiedInt, SavedTextDirectory, BasedFileName)
+            );
+
+            // Connect the dataflow blocks to form a pipeline.
+            transformIntIntoString.LinkTo(actionBlock, LinkOptions);
+
+            transformIntIntoString.Post(aNumber);
+
+            // Mark the head of the pipeline as complete.
+            transformIntIntoString.Complete();
+
+            // Wait for the last block in the pipeline to process all messages.
+            actionBlock.Completion.Wait();
+        }
+
+        #endregion ActionBlockUsage
+
         #region GetMetadataFromFile
 
-        private const string WorkingDirectory = @".\imgDataflow\";
+        private const string SavedImageDirectory = @".\_dataflowImg\";
         private const string DefaultLink = "https://raw.githubusercontent.com/Dammouz/TplDataflow/master/WikimediaPicturesOfTheDayNovemberList.txt";
 
         /// <summary>
-        /// Post method to retrieve metadata from a list of image URL.
+        /// Post method to illustrate a whole pipeline. Retrieves metadata from a list of image URL.
         /// </summary>
         /// <param name="pathToFile">Link to text file containing the list<br />
-        /// https://raw.githubusercontent.com/Dammouz/TplDataflow/master/WikimediaPicturesOfTheDayNovemberList.txt </param>
+        ///   <code>
+        ///   https://raw.githubusercontent.com/Dammouz/TplDataflow/master/WikimediaPicturesOfTheDayNovemberList.txt
+        ///   </code>
+        /// </param>
         /// <param name="numberOfLines">Number of maximum files to retrieve</param>
-        /// <param name="order"></param>
-        /// <returns>Some metadata of downloaded images</returns>
+        /// <param name="order">Order ouput by <see cref="IMetaData.Status" /> value</param>
+        /// <returns>Some <see cref="IMetaData" /> of downloaded images</returns>
         [HttpPost]
-        [Route(nameof(GetMetadataFromFile))]
-        public IEnumerable<IMetaData> GetMetadataFromFile(string pathToFile, int numberOfLines, bool order = false)
+        [Route(nameof(GetMetadatasFromAList))]
+        public IEnumerable<IMetaData> GetMetadatasFromAList(string pathToFile, int numberOfLines, bool order = false)
         {
-            Console.WriteLine($"Inside {nameof(TplDataflowController)} - {nameof(GetMetadataFromFile)}");
-            CommonHelpers.CleanWorkingDirectory(WorkingDirectory);
+            Console.WriteLine($"Inside {nameof(TplDataflowController)} - {nameof(GetMetadatasFromAList)}");
+            CommonHelpers.CleanWorkingDirectory(SavedImageDirectory);
             var listOfMetadata = new List<IMetaData>();
 
             if (string.IsNullOrWhiteSpace(pathToFile))
@@ -113,7 +156,7 @@ namespace TplDataflow.Controllers
                 Functions.TransformListIntoSeveralUris(listOfUri)
             );
             var downloadImageData = new TransformBlock<string, IMetaData>(url =>
-                Functions.DownloadImageData(url, WorkingDirectory)
+                Functions.DownloadImageData(url, SavedImageDirectory)
             );
             var setStatusOfProcess = new ActionBlock<IMetaData>(metadata =>
                 Functions.SetStatusOfProcess(listOfMetadata, metadata)

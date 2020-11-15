@@ -12,10 +12,12 @@
   <ItemGroup>
     <PackageReference Include="Swashbuckle.AspNetCore" Version="5.6.3" />
     <PackageReference Include="System.Drawing.Common" Version="5.0.0" />
+    <PackageReference Include="System.Threading.Tasks.Dataflow" Version="5.0.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="imgDataflow/" />
+    <Folder Include="_dataflowImg/" />
+    <Folder Include="_dataflowTxt/" />
   </ItemGroup>
 
 </Project>
