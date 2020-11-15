@@ -6,8 +6,8 @@ using TplDataflow.Model;
 
 namespace TplDataflow.Controllers
 {
-    [ApiController]
-    [Route("[controller]")]
+    //[ApiController]
+    //[Route("[controller]")]
     public class DummyObjectController : ControllerBase
     {
         private readonly ILogger<DummyObjectController> _logger;
