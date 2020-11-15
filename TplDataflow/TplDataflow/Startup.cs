@@ -13,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
+using Swashbuckle.AspNetCore.SwaggerUI;
 
 namespace TplDataflow
 {
@@ -27,7 +28,10 @@ namespace TplDataflow
 
         public IConfiguration Configuration { get; }
 
-        // This method gets called by the runtime. Use this method to add services to the container.
+        /// <summary>
+        /// This method gets called by the runtime. Use this method to add services to the container.
+        /// </summary>
+        /// <param name="services"></param>
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers()
@@ -65,7 +69,11 @@ namespace TplDataflow
             });
         }
 
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
+        /// <summary>
+        /// This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
+        /// </summary>
+        /// <param name="app"></param>
+        /// <param name="env"></param>
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             // Enable middleware to serve generated Swagger as a JSON endpoint.
@@ -76,7 +84,11 @@ namespace TplDataflow
             app.UseSwaggerUI(c =>
             {
                 c.SwaggerEndpoint($"/swagger/{_version}/swagger.json", $"TplDataflow {_version}");
-                //c.RoutePrefix = "FirtApi";
+                //c.SupportedSubmitMethods(new SubmitMethod[]
+                //{
+                //    SubmitMethod.Get
+                //});
+                //c.RoutePrefix = "RoutePrefixTest";
             });
 
             if (env.IsDevelopment())

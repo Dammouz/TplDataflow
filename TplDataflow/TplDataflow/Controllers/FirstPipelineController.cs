@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -13,8 +12,9 @@ using TplDataflow.Model;
 
 namespace TplDataflow.Controllers
 {
+    [Produces("application/json")]
+    [Route("api/firstPipeline")]
     [ApiController]
-    [Route("[controller]")]
     public class FirstPipelineController : ControllerBase
     {
         private const string WorkingDirectory = @".\imgDataflow\";
@@ -28,8 +28,9 @@ namespace TplDataflow.Controllers
         /// <summary>
         /// Post method to retrieve metadata from a list of image URL.
         /// </summary>
-        /// <param name="numberOfLines">number of maximum files to retrieve</param>
-        /// <param name="pathToFile">Link to text file ( https://raw.githubusercontent.com/Dammouz/TplDataflow/master/WikimediaPicturesOfTheDayNovemberList.txt )</param>
+        /// <param name="numberOfLines">Number of maximum files to retrieve</param>
+        /// <param name="pathToFile">Link to text file containing the list<br />
+        /// https://raw.githubusercontent.com/Dammouz/TplDataflow/master/WikimediaPicturesOfTheDayNovemberList.txt </param>
         /// <returns></returns>
         [HttpPost]
         public IEnumerable<IMetaData> Get(int numberOfLines, string pathToFile)
@@ -40,14 +41,16 @@ namespace TplDataflow.Controllers
         /// <summary>
         /// Get method to retrieve metadata from a list of image URL.
         /// </summary>
-        /// <param name="numberOfLines">number of maximum files to retrieve</param>
-        /// <param name="pathToFile">Link to text file ( https://raw.githubusercontent.com/Dammouz/TplDataflow/master/WikimediaPicturesOfTheDayNovemberList.txt )</param>
+        /// <param name="numberOfLines">Number of maximum files to retrieve</param>
+        /// <param name="pathToFile">Link to text file containing the list<br />
+        /// https://raw.githubusercontent.com/Dammouz/TplDataflow/master/WikimediaPicturesOfTheDayNovemberList.txt </param>
         /// <param name="order">Choose if failed object are displayed only at the end</param>
         /// <returns></returns>
         [HttpGet]
         public IEnumerable<IMetaData> Get(int numberOfLines, string pathToFile, bool order)
         {
             _logger.LogWarning($"Inside {nameof(FirstPipelineController)}-{nameof(Get)}");
+            CleanWorkingDirectory(WorkingDirectory);
 
             if (numberOfLines < 1)
             {
@@ -71,8 +74,7 @@ namespace TplDataflow.Controllers
                 };
             }
 
-            CleanWorkingDirectory();
-            var listOfMetaData = new List<IMetaData>();
+            var listOfMetadata = new List<IMetaData>();
 
             //
             // Create the members of the pipeline.
@@ -111,7 +113,6 @@ namespace TplDataflow.Controllers
             {
                 Console.WriteLine("Downloading image data...");
 
-
                 IMetaData metadata = null;
 
                 try
@@ -121,7 +122,7 @@ namespace TplDataflow.Controllers
 
                     using (WebClient client = new WebClient())
                     {
-                        client.DownloadFile(new Uri(url), imagePath);
+                        client.DownloadFile(url, imagePath);
                     }
 
                     using (var image = Image.FromFile(imagePath))
@@ -161,8 +162,8 @@ namespace TplDataflow.Controllers
             var setStatusOfProcess = new ActionBlock<IMetaData>(metadata =>
             {
                 Console.WriteLine("Seting the status of each metadata");
-                metadata.Status = string.IsNullOrEmpty(metadata.Error) ? 1 : -1;
-                listOfMetaData.Add(metadata);
+                metadata.Status = string.IsNullOrEmpty(metadata.Error) ? 1 : -888;
+                listOfMetadata.Add(metadata);
             });
 
             //
@@ -188,8 +189,8 @@ namespace TplDataflow.Controllers
             setStatusOfProcess.Completion.Wait();
 
             return order
-                ? listOfMetaData.OrderByDescending(md => md.Status)
-                : (IEnumerable<IMetaData>)listOfMetaData;
+                ? listOfMetadata.OrderByDescending(metadata => metadata.Status)
+                : (IEnumerable<IMetaData>)listOfMetadata;
         }
 
         private static string MakeValidFileName(string filename)
@@ -197,18 +198,18 @@ namespace TplDataflow.Controllers
             return string.Join("_", filename.Split(Path.GetInvalidFileNameChars()));
         }
 
-        private void CleanWorkingDirectory()
+        private static void CleanWorkingDirectory(string directory)
         {
-            if (Directory.Exists(WorkingDirectory))
+            if (Directory.Exists(directory))
             {
-                foreach (var file in Directory.GetFiles(WorkingDirectory, "*.jpg"))
+                foreach (var file in Directory.GetFiles(directory, "*.jpg"))
                 {
                     System.IO.File.Delete(file);
                 }
             }
             else
             {
-                Directory.CreateDirectory(WorkingDirectory);
+                Directory.CreateDirectory(directory);
             }
         }
     }
