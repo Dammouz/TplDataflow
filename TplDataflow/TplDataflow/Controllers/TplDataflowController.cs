@@ -15,14 +15,65 @@ namespace TplDataflow.Controllers
     [ApiController]
     public class TplDataflowController : ControllerBase
     {
+        #region .ctor & private properties
+
         private readonly ILogger<TplDataflowController> _logger;
-        private const string WorkingDirectory = @".\imgDataflow\";
-        private const string DefaultLink = "https://raw.githubusercontent.com/Dammouz/TplDataflow/master/WikimediaPicturesOfTheDayNovemberList.txt";
+
+        private readonly DataflowLinkOptions LinkOptions = new DataflowLinkOptions
+        {
+            PropagateCompletion = true
+        };
 
         public TplDataflowController(ILogger<TplDataflowController> logger)
         {
             _logger = logger;
         }
+
+        #endregion .ctor & private properties
+
+        #region TransformBlockUsage
+
+        private const char SplitterSeparator = '#';
+
+        /// <summary>
+        /// Post method to retrieve metadata from a list of image URL.
+        /// </summary>
+        /// <param name="stringToSplit">Input string to split by the char '#'<br />
+        /// NameOfTheImage#InitialUrl#Folder path with spaces</param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route(nameof(TransformBlockUsage))]
+        public IMetaData TransformBlockUsage(string stringToSplit)
+        {
+            Console.WriteLine($"Inside {nameof(TplDataflowController)} - {nameof(TransformBlockUsage)}");
+
+
+            // Create the members of the pipeline.
+            var SplitAnInputString = new TransformBlock<string, string[]>(input =>
+                Functions.SplitAnInputString(input, SplitterSeparator)
+            );
+            var tranformContentIntoListOfUri = new TransformBlock<string[], IMetaData>(stringArray =>
+                Functions.CreateASingleMedatadataFromStrings(stringArray)
+            );
+
+            // Connect the dataflow blocks to form a pipeline.
+            SplitAnInputString.LinkTo(tranformContentIntoListOfUri, LinkOptions);
+
+            SplitAnInputString.Post(stringToSplit);
+
+            // Mark the head of the pipeline as complete.
+            SplitAnInputString.Complete();
+
+            // Return the value transformed by the last TransformBlock
+            return tranformContentIntoListOfUri.Receive();
+        }
+
+        #endregion TransformBlockUsage
+
+        #region GetMetadataFromFile
+
+        private const string WorkingDirectory = @".\imgDataflow\";
+        private const string DefaultLink = "https://raw.githubusercontent.com/Dammouz/TplDataflow/master/WikimediaPicturesOfTheDayNovemberList.txt";
 
         /// <summary>
         /// Post method to retrieve metadata from a list of image URL.
@@ -52,29 +103,28 @@ namespace TplDataflow.Controllers
 
 
             // Create the members of the pipeline.
-
-            var streamTextContent = new TransformBlock<string, string>(uri => Functions.StreamTextContent(uri));
-
-            var tranformContentIntoListOfUri = new TransformBlock<string, IList<string>>(content => Functions.TranformContentIntoListOfUri(content, numberOfLines));
-
-            var transformListIntoSeveralUris = new TransformManyBlock<IList<string>, string>(listOfUri => Functions.TransformListIntoSeveralUris(listOfUri));
-
-            var downloadImageData = new TransformBlock<string, IMetaData>(url => Functions.DownloadImageData(url, WorkingDirectory));
-
-            var setStatusOfProcess = new ActionBlock<IMetaData>(metadata => Functions.SetStatusOfProcess(listOfMetadata, metadata));
+            var streamTextContent = new TransformBlock<string, string>(uri =>
+                Functions.StreamTextContent(uri)
+            );
+            var tranformContentIntoListOfUri = new TransformBlock<string, IList<string>>(content =>
+                Functions.TranformContentIntoListOfUri(content, numberOfLines)
+            );
+            var transformListIntoSeveralUris = new TransformManyBlock<IList<string>, string>(listOfUri =>
+                Functions.TransformListIntoSeveralUris(listOfUri)
+            );
+            var downloadImageData = new TransformBlock<string, IMetaData>(url =>
+                Functions.DownloadImageData(url, WorkingDirectory)
+            );
+            var setStatusOfProcess = new ActionBlock<IMetaData>(metadata =>
+                Functions.SetStatusOfProcess(listOfMetadata, metadata)
+            );
 
 
             // Connect the dataflow blocks to form a pipeline.
-
-            var linkOptions = new DataflowLinkOptions
-            {
-                PropagateCompletion = true
-            };
-
-            streamTextContent.LinkTo(tranformContentIntoListOfUri, linkOptions);
-            tranformContentIntoListOfUri.LinkTo(transformListIntoSeveralUris, linkOptions);
-            transformListIntoSeveralUris.LinkTo(downloadImageData, linkOptions);
-            downloadImageData.LinkTo(setStatusOfProcess, linkOptions);
+            streamTextContent.LinkTo(tranformContentIntoListOfUri, LinkOptions);
+            tranformContentIntoListOfUri.LinkTo(transformListIntoSeveralUris, LinkOptions);
+            transformListIntoSeveralUris.LinkTo(downloadImageData, LinkOptions);
+            downloadImageData.LinkTo(setStatusOfProcess, LinkOptions);
 
             streamTextContent.Post(pathToFile);
 
@@ -88,5 +138,7 @@ namespace TplDataflow.Controllers
                 ? listOfMetadata.OrderByDescending(metadata => metadata.Status)
                 : (IEnumerable<IMetaData>)listOfMetadata;
         }
+
+        #endregion GetMetadataFromFile
     }
 }

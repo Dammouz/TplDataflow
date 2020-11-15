@@ -13,15 +13,17 @@ namespace TplDataflow.Dataflow
 {
     internal static class Functions
     {
+        #region Functions used by GetMetadataFromFile
+
         internal static IEnumerable<IMetaData> ReturnOnlyOneMetadaInError(string error)
         {
             return new List<IMetaData>
+            {
+                new MetaData
                 {
-                    new MetaData
-                    {
-                        Error = error
-                    }
-                };
+                    Error = error
+                }
+            };
         }
 
         internal async static Task<string> StreamTextContent(string uri)
@@ -112,5 +114,63 @@ namespace TplDataflow.Dataflow
             metadata.Status = string.IsNullOrEmpty(metadata.Error) ? 1 : -888;
             listOfMetadata.Add(metadata);
         }
+
+        #endregion Functions used by GetMetadataFromFile
+
+        #region Functions used by TransformBlockUsage
+
+        internal static string[] SplitAnInputString(string input, char splitterSeparator)
+        {
+            Console.WriteLine($"{nameof(SplitAnInputString)} - Splitting {input} by the char '{splitterSeparator}'...");
+
+            var splittedInput = input?.Split(splitterSeparator);
+            if (splittedInput == null || splittedInput.Length < 1)
+            {
+                return new[]
+                {
+                    "-0",
+                    string.Empty,
+                    string.Empty
+                };
+            }
+
+            if (splittedInput.Length == 1)
+            {
+                return new[]
+                {
+                    "-100",
+                    splittedInput[0],
+                    "Array contains only 1 element"
+                };
+            }
+
+            if (splittedInput.Length == 2)
+            {
+                return new[]
+                {
+                    "-200",
+                    splittedInput[0],
+                    splittedInput[1]
+                };
+            }
+
+            return splittedInput;
+        }
+
+        internal static IMetaData CreateASingleMedatadataFromStrings(string[] stringArray)
+        {
+            Console.WriteLine($"{nameof(CreateASingleMedatadataFromStrings)} - Creating the metadata based on value : '{string.Join(" - ", stringArray)}'...");
+
+            var status = int.TryParse(stringArray[0], out var parsedInt) ? parsedInt : 1;
+            return new MetaData
+            {
+                Name = stringArray[0],
+                InitialUrl = stringArray[1],
+                Folder = stringArray[2],
+                Status = status
+            };
+        }
+
+        #endregion Functions used by TransformBlockUsage
     }
 }
