@@ -35,13 +35,13 @@ namespace TplDataflow
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers()
-                    // Remove null property to ouput
+                    // Remove null property to ouput.
                     .AddJsonOptions(options =>
                     {
                         options.JsonSerializerOptions.IgnoreNullValues = true;
                     });
 
-            // Register the Swagger generator, defining 1 or more Swagger documents
+            // Register the Swagger generator, defining 1 or more Swagger documents.
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc(_version, new OpenApiInfo
@@ -96,7 +96,7 @@ namespace TplDataflow
                 app.UseDeveloperExceptionPage();
             }
 
-            // Use HTTPS
+            // Use HTTPS.
             //app.UseHttpsRedirection();
 
             app.UseRouting();

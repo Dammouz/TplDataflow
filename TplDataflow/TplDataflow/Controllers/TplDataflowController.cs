@@ -50,25 +50,25 @@ namespace TplDataflow.Controllers
         {
             Console.WriteLine($"Inside {nameof(TplDataflowController)} - {nameof(TransformBlockUsage)}");
 
-
             // Create the members of the pipeline.
-            var SplitAnInputString = new TransformBlock<string, string[]>(input =>
-                Functions.SplitAnInputString(input, SplitterSeparator)
+            var transformBlockSplitAnInputStringIntoArray = new TransformBlock<string, string[]>(input =>
+                Functions.SplitAnInputStringIntoArray(input, SplitterSeparator)
             );
-            var tranformContentIntoListOfUri = new TransformBlock<string[], IMetaData>(stringArray =>
+            var transformBlockCreateASingleMedatadataFromStrings = new TransformBlock<string[], IMetaData>(stringArray =>
                 Functions.CreateASingleMedatadataFromStrings(stringArray)
             );
 
             // Connect the dataflow blocks to form a pipeline.
-            SplitAnInputString.LinkTo(tranformContentIntoListOfUri, LinkOptions);
+            transformBlockSplitAnInputStringIntoArray.LinkTo(transformBlockCreateASingleMedatadataFromStrings, LinkOptions);
 
-            SplitAnInputString.Post(stringToSplit);
+            // Start TransformBlockUsage pipeline with the input values.
+            transformBlockSplitAnInputStringIntoArray.Post(stringToSplit);
 
             // Mark the head of the pipeline as complete.
-            SplitAnInputString.Complete();
+            transformBlockSplitAnInputStringIntoArray.Complete();
 
-            // Return the value transformed by the last TransformBlock
-            return tranformContentIntoListOfUri.Receive();
+            // Return the value transformed by the last TransformBlock.
+            return transformBlockCreateASingleMedatadataFromStrings.Receive();
         }
 
         #endregion TransformBlockUsage
@@ -89,28 +89,73 @@ namespace TplDataflow.Controllers
             Console.WriteLine($"Inside {nameof(TplDataflowController)} - {nameof(ActionBlockUsage)}");
 
             // Create the members of the pipeline.
-            var transformIntIntoString = new TransformBlock<int, string>(anInt =>
+            var transformBlockTransformIntIntoRepeatedLines = new TransformBlock<int, string>(anInt =>
                 Functions.TransformIntIntoRepeatedLines(anInt)
             );
-            var actionBlock = new ActionBlock<string>(stringifiedInt =>
-                Functions.ModifyString(stringifiedInt, SavedTextDirectory, BasedFileName)
+            var actionBlockModifyStringAndWriteInFile = new ActionBlock<string>(stringifiedInt =>
+                Functions.ModifyStringAndWriteInFile(stringifiedInt, SavedTextDirectory, BasedFileName)
             );
 
             // Connect the dataflow blocks to form a pipeline.
-            transformIntIntoString.LinkTo(actionBlock, LinkOptions);
+            transformBlockTransformIntIntoRepeatedLines.LinkTo(actionBlockModifyStringAndWriteInFile, LinkOptions);
 
-            transformIntIntoString.Post(aNumber);
+            // Start ActionBlockUsage pipeline with the input values.
+            transformBlockTransformIntIntoRepeatedLines.Post(aNumber);
 
             // Mark the head of the pipeline as complete.
-            transformIntIntoString.Complete();
+            transformBlockTransformIntIntoRepeatedLines.Complete();
 
             // Wait for the last block in the pipeline to process all messages.
-            actionBlock.Completion.Wait();
+            actionBlockModifyStringAndWriteInFile.Completion.Wait();
         }
 
         #endregion ActionBlockUsage
 
-        #region GetMetadataFromFile
+        #region TransformManyBlockUsage
+
+        /// <summary>
+        /// Post method to illustrate <see cref="TransformManyBlock{TInput, TOutput}" />. Retrieves some metadatas from an input string to split.
+        /// </summary>
+        /// <param name="stringToSplit">Input string to split by the char '#'<br />
+        ///   <code>
+        ///   NameOfTheImage#InitialUrl#Folder path with spaces
+        ///   </code>
+        /// </param>
+        /// <returns>Returns an enumeration of <see cref="IMetaData" /></returns>
+        [HttpPost]
+        [Route(nameof(TransformManyBlockUsage))]
+        public IEnumerable<IMetaData> TransformManyBlockUsage(string stringToSplit)
+        {
+            Console.WriteLine($"Inside {nameof(TplDataflowController)} - {nameof(TransformManyBlockUsage)}");
+
+            // Create the members of the pipeline.
+            var transformManyBlockSplitAnInputStringIntoArray = new TransformManyBlock<string, string>(input =>
+                Functions.SplitAnInputStringIntoArray(input, SplitterSeparator)
+            );
+            var transformBlockCreateASingleMedatadataFromAString = new TransformBlock<string, IMetaData>(stringInput =>
+                Functions.CreateASingleMedatadataFromAString(stringInput)
+            );
+
+            // Connect the dataflow blocks to form a pipeline.
+            transformManyBlockSplitAnInputStringIntoArray.LinkTo(transformBlockCreateASingleMedatadataFromAString, LinkOptions);
+
+            // Start TransformManyBlockUsage pipeline with the input values.
+            transformManyBlockSplitAnInputStringIntoArray.Post(stringToSplit);
+
+            // Mark the head of the pipeline as complete.
+            transformManyBlockSplitAnInputStringIntoArray.Complete();
+
+            // Equivalent of transformManyBlockSplitAnInputStringIntoArray.OutputCount
+            var ouputCount = stringToSplit?.Split(SplitterSeparator, StringSplitOptions.RemoveEmptyEntries).Length ?? 0;
+            for (var i = 0; i < ouputCount; i++)
+            {
+                yield return transformBlockCreateASingleMedatadataFromAString.Receive();
+            }
+        }
+
+        #endregion TransformManyBlockUsage
+
+        #region GetMetadatasFromAList
 
         private const string SavedImageDirectory = @".\_dataflowImg\";
         private const string DefaultLink = "https://raw.githubusercontent.com/Dammouz/TplDataflow/master/WikimediaPicturesOfTheDayNovemberList.txt";
@@ -146,42 +191,43 @@ namespace TplDataflow.Controllers
 
 
             // Create the members of the pipeline.
-            var streamTextContent = new TransformBlock<string, string>(uri =>
+            var transformBlockStreamTextContent = new TransformBlock<string, string>(uri =>
                 Functions.StreamTextContent(uri)
             );
-            var tranformContentIntoListOfUri = new TransformBlock<string, IList<string>>(content =>
+            var transformBlockTranformContentIntoListOfUri = new TransformBlock<string, IList<string>>(content =>
                 Functions.TranformContentIntoListOfUri(content, numberOfLines)
             );
-            var transformListIntoSeveralUris = new TransformManyBlock<IList<string>, string>(listOfUri =>
+            var transformManyBlockTransformListIntoSeveralUris = new TransformManyBlock<IList<string>, string>(listOfUri =>
                 Functions.TransformListIntoSeveralUris(listOfUri)
             );
-            var downloadImageData = new TransformBlock<string, IMetaData>(url =>
+            var transformBlockDownloadImageData = new TransformBlock<string, IMetaData>(url =>
                 Functions.DownloadImageData(url, SavedImageDirectory)
             );
-            var setStatusOfProcess = new ActionBlock<IMetaData>(metadata =>
+            var actionBlockSetStatusOfProcess = new ActionBlock<IMetaData>(metadata =>
                 Functions.SetStatusOfProcess(listOfMetadata, metadata)
             );
 
 
             // Connect the dataflow blocks to form a pipeline.
-            streamTextContent.LinkTo(tranformContentIntoListOfUri, LinkOptions);
-            tranformContentIntoListOfUri.LinkTo(transformListIntoSeveralUris, LinkOptions);
-            transformListIntoSeveralUris.LinkTo(downloadImageData, LinkOptions);
-            downloadImageData.LinkTo(setStatusOfProcess, LinkOptions);
+            transformBlockStreamTextContent.LinkTo(transformBlockTranformContentIntoListOfUri, LinkOptions);
+            transformBlockTranformContentIntoListOfUri.LinkTo(transformManyBlockTransformListIntoSeveralUris, LinkOptions);
+            transformManyBlockTransformListIntoSeveralUris.LinkTo(transformBlockDownloadImageData, LinkOptions);
+            transformBlockDownloadImageData.LinkTo(actionBlockSetStatusOfProcess, LinkOptions);
 
-            streamTextContent.Post(pathToFile);
+            // Start GetMetadatasFromAList pipeline with the input values.
+            transformBlockStreamTextContent.Post(pathToFile);
 
             // Mark the head of the pipeline as complete.
-            streamTextContent.Complete();
+            transformBlockStreamTextContent.Complete();
 
             // Wait for the last block in the pipeline to process all messages.
-            setStatusOfProcess.Completion.Wait();
+            actionBlockSetStatusOfProcess.Completion.Wait();
 
             return order
                 ? listOfMetadata.OrderByDescending(metadata => metadata.Status)
                 : (IEnumerable<IMetaData>)listOfMetadata;
         }
 
-        #endregion GetMetadataFromFile
+        #endregion GetMetadatasFromAList
     }
 }
