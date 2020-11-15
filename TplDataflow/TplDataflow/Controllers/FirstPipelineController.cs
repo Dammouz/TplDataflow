@@ -8,6 +8,7 @@ using System.Net.Http;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using TplDataflow.Common;
 using TplDataflow.Model;
 
 namespace TplDataflow.Controllers
@@ -33,7 +34,8 @@ namespace TplDataflow.Controllers
         /// https://raw.githubusercontent.com/Dammouz/TplDataflow/master/WikimediaPicturesOfTheDayNovemberList.txt </param>
         /// <returns></returns>
         [HttpPost]
-        public IEnumerable<IMetaData> Get(int numberOfLines, string pathToFile)
+        [Route(nameof(GetMetadata))]
+        public IEnumerable<IMetaData> GetMetadata(int numberOfLines, string pathToFile)
         {
             return Get(numberOfLines, pathToFile, false);
         }
@@ -47,10 +49,11 @@ namespace TplDataflow.Controllers
         /// <param name="order">Choose if failed object are displayed only at the end</param>
         /// <returns></returns>
         [HttpGet]
+        [Route(nameof(Get))]
         public IEnumerable<IMetaData> Get(int numberOfLines, string pathToFile, bool order)
         {
             _logger.LogWarning($"Inside {nameof(FirstPipelineController)}-{nameof(Get)}");
-            CleanWorkingDirectory(WorkingDirectory);
+            CommonHelpers.CleanWorkingDirectory(WorkingDirectory);
 
             if (numberOfLines < 1)
             {
@@ -117,7 +120,7 @@ namespace TplDataflow.Controllers
 
                 try
                 {
-                    var fileName = MakeValidFileName(Path.GetFileName(url));
+                    var fileName = CommonHelpers.MakeValidFileName(Path.GetFileName(url));
                     var imagePath = Path.Combine(WorkingDirectory, fileName);
 
                     using (WebClient client = new WebClient())
@@ -191,26 +194,6 @@ namespace TplDataflow.Controllers
             return order
                 ? listOfMetadata.OrderByDescending(metadata => metadata.Status)
                 : (IEnumerable<IMetaData>)listOfMetadata;
-        }
-
-        private static string MakeValidFileName(string filename)
-        {
-            return string.Join("_", filename.Split(Path.GetInvalidFileNameChars()));
-        }
-
-        private static void CleanWorkingDirectory(string directory)
-        {
-            if (Directory.Exists(directory))
-            {
-                foreach (var file in Directory.GetFiles(directory, "*.jpg"))
-                {
-                    System.IO.File.Delete(file);
-                }
-            }
-            else
-            {
-                Directory.CreateDirectory(directory);
-            }
         }
     }
 }
