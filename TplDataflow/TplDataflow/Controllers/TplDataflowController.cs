@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -154,6 +156,56 @@ namespace TplDataflow.Controllers
         }
 
         #endregion TransformManyBlockUsage
+
+        #region BroadcastBlockUsage
+
+        /// <summary>
+        /// Post method to illustrate <see cref="BroadcastBlock{T}" />. Display a sequence of strings broadcasted.
+        /// </summary>
+        /// <param name="numberOfIteration">Number of iterations</param>
+        /// <returns>a List of 'numberOfIteration' strings</returns>
+        [HttpPost]
+        [Route(nameof(BroadcastBlockUsage))]
+        public IEnumerable<string> BroadcastBlockUsage(int numberOfIteration)
+        {
+            Console.WriteLine($"Inside {nameof(TplDataflowController)} - {nameof(BroadcastBlockUsage)}");
+
+            var strings = new BlockingCollection<string>();
+
+            // Create the members of the pipeline.
+            var broadcastBlockGivenInputToSubscribers = new BroadcastBlock<string>(input => input);
+            var actionBlockSubscriber1 = new ActionBlock<string>(stringInput =>
+                Functions.AddInputIntoTheGivenList(strings, stringInput, "Sub 1")
+            );
+            var actionBlockSubscriber2 = new ActionBlock<string>(stringInput =>
+                Functions.AddInputIntoTheGivenList(strings, stringInput, "Sub 2")
+            );
+            var actionBlockSubscriber3 = new ActionBlock<string>(stringInput =>
+                Functions.AddInputIntoTheGivenList(strings, stringInput, "Sub 3")
+            );
+
+            // Connect the dataflow blocks to form a pipeline.
+            broadcastBlockGivenInputToSubscribers.LinkTo(actionBlockSubscriber1, LinkOptions);
+            broadcastBlockGivenInputToSubscribers.LinkTo(actionBlockSubscriber2, LinkOptions);
+            broadcastBlockGivenInputToSubscribers.LinkTo(actionBlockSubscriber3, LinkOptions);
+
+            // Start BroadcastBlockUsage pipeline with the input values.
+            for (var i = 1; i <= numberOfIteration; i++)
+            {
+                broadcastBlockGivenInputToSubscribers.Post($"Value = {i}");
+            }
+
+            // Mark the head of the pipeline as complete.
+            broadcastBlockGivenInputToSubscribers.Complete();
+
+            Task.WaitAll(actionBlockSubscriber1.Completion,
+                         actionBlockSubscriber2.Completion,
+                         actionBlockSubscriber3.Completion);
+
+            return strings;
+        }
+
+        #endregion BroadcastBlockUsage
 
         #region GetMetadatasFromAList
 
