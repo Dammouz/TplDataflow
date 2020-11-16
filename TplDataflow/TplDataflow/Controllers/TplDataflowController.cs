@@ -211,6 +211,7 @@ namespace TplDataflow.Controllers
             // Mark the head of the pipeline as complete.
             broadcastBlockGivenInputToSubscribers.Complete();
 
+            // Waiting block to receive all post input.
             Task.WaitAll(actionBlockSubscriber1.Completion,
                          actionBlockSubscriber2.Completion,
                          actionBlockSubscriber3.Completion);
@@ -263,6 +264,7 @@ namespace TplDataflow.Controllers
             // Mark the head of the pipeline as complete.
             bufferBlockGivenInputToSubscribers.Complete();
 
+            // Waiting block to receive all post input.
             Task.WaitAll(actionBlockSubscriber1.Completion,
                          actionBlockSubscriber2.Completion,
                          actionBlockSubscriber3.Completion);
@@ -317,6 +319,7 @@ namespace TplDataflow.Controllers
             // Mark the head of the pipeline as complete.
             bufferBlockGivenInputToSubscribers.Complete();
 
+            // Waiting block to receive all post input.
             Task.WaitAll(actionBlockSubscriber1.Completion,
                          actionBlockSubscriber2.Completion,
                          actionBlockSubscriber3.Completion);
@@ -384,6 +387,7 @@ namespace TplDataflow.Controllers
             // Mark the head of the pipeline as complete.
             bufferBlockGivenInputToSubscribers.Complete();
 
+            // Waiting block to receive all post input.
             Task.WaitAll(actionBlockSubscriber1.Completion,
                          actionBlockSubscriber2.Completion,
                          actionBlockSubscriber3.Completion);
