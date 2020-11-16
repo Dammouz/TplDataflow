@@ -21,17 +21,30 @@ namespace TplDataflow.Controllers
 
         private readonly ILogger<TplDataflowController> _logger;
 
-        private readonly DataflowLinkOptions LinkOptions = new DataflowLinkOptions
-        {
-            PropagateCompletion = true
-        };
-
         public TplDataflowController(ILogger<TplDataflowController> logger)
         {
             _logger = logger;
         }
 
         #endregion .ctor & private properties
+
+        #region Dataflow Options
+
+
+        private readonly DataflowLinkOptions LinkOptions = new DataflowLinkOptions
+        {
+            PropagateCompletion = true
+        };
+
+        private static ExecutionDataflowBlockOptions CreateBlockOptionsWithBoundedBoundedCapacity(int capacity)
+        {
+            return new ExecutionDataflowBlockOptions
+            {
+                BoundedCapacity = capacity
+            };
+        }
+
+        #endregion Dataflow Options
 
         #region TransformBlockUsage
 
@@ -45,7 +58,7 @@ namespace TplDataflow.Controllers
         ///   NameOfTheImage#InitialUrl#Folder path with spaces
         ///   </code>
         /// </param>
-        /// <returns>Returns a <see cref="IMetaData" /></returns>
+        /// <returns>A <see cref="IMetaData" /></returns>
         [HttpPost]
         [Route(nameof(TransformBlockUsage))]
         public IMetaData TransformBlockUsage(string stringToSplit)
@@ -123,7 +136,7 @@ namespace TplDataflow.Controllers
         ///   NameOfTheImage#InitialUrl#Folder path with spaces
         ///   </code>
         /// </param>
-        /// <returns>Returns an enumeration of <see cref="IMetaData" /></returns>
+        /// <returns>An enumeration of <see cref="IMetaData" /></returns>
         [HttpPost]
         [Route(nameof(TransformManyBlockUsage))]
         public IEnumerable<IMetaData> TransformManyBlockUsage(string stringToSplit)
@@ -163,7 +176,7 @@ namespace TplDataflow.Controllers
         /// Post method to illustrate <see cref="BroadcastBlock{T}" />. Display a sequence of strings broadcasted.
         /// </summary>
         /// <param name="numberOfIteration">Number of iterations</param>
-        /// <returns>a List of 'numberOfIteration' strings</returns>
+        /// <returns>A List of 'numberOfIteration' strings</returns>
         [HttpPost]
         [Route(nameof(BroadcastBlockUsage))]
         public IEnumerable<string> BroadcastBlockUsage(int numberOfIteration)
@@ -206,6 +219,179 @@ namespace TplDataflow.Controllers
         }
 
         #endregion BroadcastBlockUsage
+
+        #region BufferBlockUsage
+
+        /// <summary>
+        /// Post method to illustrate <see cref="BufferBlock{T}" />. Display a sequence of strings buffered.
+        /// </summary>
+        /// <param name="numberOfIteration">Number of iterations</param>
+        /// <returns>A List of 'numberOfIteration' strings</returns>
+        [HttpPost]
+        [Route(nameof(BufferBlockUsage))]
+        public IEnumerable<string> BufferBlockUsage(int numberOfIteration)
+        {
+            Console.WriteLine($"Inside {nameof(TplDataflowController)} - {nameof(BufferBlockUsage)}");
+
+            var strings = new BlockingCollection<string>();
+
+            // Create the members of the pipeline.
+            var bufferBlockGivenInputToSubscribers = new BufferBlock<string>();
+            var actionBlockSubscriber1 = new ActionBlock<string>(stringInput =>
+                Functions.AddInputIntoTheGivenList(strings, stringInput, "Sub 1")
+            );
+            var actionBlockSubscriber2 = new ActionBlock<string>(stringInput =>
+                Functions.AddInputIntoTheGivenList(strings, stringInput, "Sub 2")
+            );
+            var actionBlockSubscriber3 = new ActionBlock<string>(stringInput =>
+                Functions.AddInputIntoTheGivenList(strings, stringInput, "Sub 3")
+            );
+
+            // Connect the dataflow blocks to form a pipeline.
+            //bufferBlockGivenInputToSubscribers.LinkTo(actionBlockSubscriber1, LinkOptions, s => s.Contains('1'));
+            //bufferBlockGivenInputToSubscribers.LinkTo(actionBlockSubscriber2, LinkOptions, s => s.Contains('2'));
+            bufferBlockGivenInputToSubscribers.LinkTo(actionBlockSubscriber1, LinkOptions);
+            bufferBlockGivenInputToSubscribers.LinkTo(actionBlockSubscriber2, LinkOptions);
+            bufferBlockGivenInputToSubscribers.LinkTo(actionBlockSubscriber3, LinkOptions);
+
+            // Start BufferBlockUsage pipeline with the input values.
+            for (var i = 1; i <= numberOfIteration; i++)
+            {
+                bufferBlockGivenInputToSubscribers.Post($"Value = {i}");
+            }
+
+            // Mark the head of the pipeline as complete.
+            bufferBlockGivenInputToSubscribers.Complete();
+
+            Task.WaitAll(actionBlockSubscriber1.Completion,
+                         actionBlockSubscriber2.Completion,
+                         actionBlockSubscriber3.Completion);
+
+            return strings;
+        }
+
+        #endregion BufferBlockUsage
+
+        #region BufferBlockUsageWithBoundedCapacity
+
+        /// <summary>
+        /// Post method to illustrate <see cref="BufferBlock{T}" /> and <see cref="DataflowBlockOptions.BoundedCapacity" />. Display a sequence of strings buffered.
+        /// </summary>
+        /// <param name="numberOfIteration">Number of iterations</param>
+        /// <param name="capacity">Capacity of the bounded <see cref="ActionBlock{T}" /></param>
+        /// <returns>A List of 'numberOfIteration' strings</returns>
+        [HttpPost]
+        [Route(nameof(BufferBlockUsageWithBoundedCapacity))]
+        public IEnumerable<string> BufferBlockUsageWithBoundedCapacity(int numberOfIteration, int capacity = 1000)
+        {
+            Console.WriteLine($"Inside {nameof(TplDataflowController)} - {nameof(BufferBlockUsageWithBoundedCapacity)}");
+
+            var strings = new BlockingCollection<string>();
+
+            // Create the members of the pipeline.
+            var bufferBlockGivenInputToSubscribers = new BufferBlock<string>();
+            var actionBlockSubscriber1 = new ActionBlock<string>(stringInput =>
+                Functions.AddInputIntoTheGivenList(strings, stringInput, "Sub 1")
+                , CreateBlockOptionsWithBoundedBoundedCapacity(capacity)
+            );
+            var actionBlockSubscriber2 = new ActionBlock<string>(stringInput =>
+                Functions.AddInputIntoTheGivenList(strings, stringInput, "Sub 2")
+                , CreateBlockOptionsWithBoundedBoundedCapacity(capacity)
+            );
+            var actionBlockSubscriber3 = new ActionBlock<string>(stringInput =>
+                Functions.AddInputIntoTheGivenList(strings, stringInput, "Sub 3")
+                , CreateBlockOptionsWithBoundedBoundedCapacity(capacity)
+            );
+
+            // Connect the dataflow blocks to form a pipeline.
+            bufferBlockGivenInputToSubscribers.LinkTo(actionBlockSubscriber1, LinkOptions);
+            bufferBlockGivenInputToSubscribers.LinkTo(actionBlockSubscriber2, LinkOptions);
+            bufferBlockGivenInputToSubscribers.LinkTo(actionBlockSubscriber3, LinkOptions);
+
+            // Start BufferBlockUsageWithBoundedCapacity pipeline with the input values.
+            for (var i = 1; i <= numberOfIteration; i++)
+            {
+                bufferBlockGivenInputToSubscribers.Post($"Value = {i}");
+            }
+
+            // Mark the head of the pipeline as complete.
+            bufferBlockGivenInputToSubscribers.Complete();
+
+            Task.WaitAll(actionBlockSubscriber1.Completion,
+                         actionBlockSubscriber2.Completion,
+                         actionBlockSubscriber3.Completion);
+
+            return strings;
+        }
+
+        #endregion BufferBlockUsageWithBoundedCapacity
+
+        #region BufferBlockUsageWithFilters
+
+        /// <summary>
+        /// Post method to illustrate <see cref="BufferBlock{T}" />. Display a sequence of strings buffered.
+        /// </summary>
+        /// <param name="numberOfIteration">Number of iterations</param>
+        /// <param name="valueToFilterForSub1">The value that Subscriber 1 must filfter</param>
+        /// <param name="valueToFilterForSub2">The value that Subscriber 2 must filfter</param>
+        /// <returns>A List of 'numberOfIteration' strings</returns>
+        [HttpPost]
+        [Route(nameof(BufferBlockUsageWithFilters))]
+        public IEnumerable<string> BufferBlockUsageWithFilters(int numberOfIteration, int valueToFilterForSub1, int valueToFilterForSub2)
+        {
+            Console.WriteLine($"Inside {nameof(TplDataflowController)} - {nameof(BufferBlockUsageWithFilters)}");
+
+            // Convert into char
+            var charToFilterForSub1 = (char)(valueToFilterForSub1 % 10 + 0x30);
+            var char1ToFilterForSub2 = (char)(valueToFilterForSub2 % 10 + 0x30);
+            var char2ToFilterForSub2 = (char)(valueToFilterForSub2 % 10 + 0x31);
+            var char3ToFilterForSub2 = (char)(valueToFilterForSub2 % 10 + 0x32);
+
+            var strings = new BlockingCollection<string>
+            {
+                $"Sub 1 - Will filter and keep only input containing '{charToFilterForSub1}'",
+                $"Sub 2 - Will filter and keep only input containing '{char1ToFilterForSub2}' and '{char2ToFilterForSub2}' and '{char3ToFilterForSub2}'",
+                $"Sub 3 - Will keep all other values, without filters"
+            };
+
+            // Create the members of the pipeline.
+            var bufferBlockGivenInputToSubscribers = new BufferBlock<string>();
+            var actionBlockSubscriber1 = new ActionBlock<string>(stringInput =>
+                Functions.AddInputIntoTheGivenList(strings, stringInput, "Sub 1 abc")
+            );
+            var actionBlockSubscriber2 = new ActionBlock<string>(stringInput =>
+                Functions.AddInputIntoTheGivenList(strings, stringInput, "Sub 2 def")
+            );
+            var actionBlockSubscriber3 = new ActionBlock<string>(stringInput =>
+                Functions.AddInputIntoTheGivenList(strings, stringInput, "Sub 3 ghi")
+            );
+
+            // Connect the dataflow blocks to form a pipeline.
+            bufferBlockGivenInputToSubscribers.LinkTo(actionBlockSubscriber1, LinkOptions,
+                s => s.Contains(charToFilterForSub1)
+            );
+            bufferBlockGivenInputToSubscribers.LinkTo(actionBlockSubscriber2, LinkOptions,
+                s => s.IndexOfAny(new[] { char1ToFilterForSub2, char2ToFilterForSub2, char3ToFilterForSub2 }) > 0
+            );
+            bufferBlockGivenInputToSubscribers.LinkTo(actionBlockSubscriber3, LinkOptions);
+
+            // Start BufferBlockUsageWithFilters pipeline with the input values.
+            for (var i = 1; i <= numberOfIteration; i++)
+            {
+                bufferBlockGivenInputToSubscribers.Post($"Value = {i}");
+            }
+
+            // Mark the head of the pipeline as complete.
+            bufferBlockGivenInputToSubscribers.Complete();
+
+            Task.WaitAll(actionBlockSubscriber1.Completion,
+                         actionBlockSubscriber2.Completion,
+                         actionBlockSubscriber3.Completion);
+
+            return strings.OrderBy(s => s);
+        }
+
+        #endregion BufferBlockUsageWithFilters
 
         #region GetMetadatasFromAList
 
