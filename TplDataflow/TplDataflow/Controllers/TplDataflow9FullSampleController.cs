@@ -18,7 +18,8 @@ namespace TplDataflow.Controllers
         private const string DefaultLink = "https://raw.githubusercontent.com/Dammouz/TplDataflow/master/WikimediaPicturesOfTheDayNovemberList.txt";
 
         /// <summary>
-        /// Post method to illustrate a whole pipeline. Retrieves metadata from a list of image URL.
+        /// Post method to illustrate a whole pipeline.
+        /// Retrieves metadata from a list of image URL.
         /// </summary>
         /// <param name="pathToFile">Link to text file containing the list<br />
         ///   <code>

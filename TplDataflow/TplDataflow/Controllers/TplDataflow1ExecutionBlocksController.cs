@@ -17,7 +17,8 @@ namespace TplDataflow.Controllers
         private const char SplitterSeparator = '#';
 
         /// <summary>
-        /// Post method to illustrate <see cref="TransformBlock{TInput, TOutput}" />. Retrieves a metadata from an input string to split.
+        /// Post method to illustrate <see cref="TransformBlock{TInput, TOutput}" />.
+        /// Retrieves a metadata from an input string to split.
         /// </summary>
         /// <param name="stringToSplit">Input string to split by the char '#'<br />
         ///   <code>
@@ -60,7 +61,8 @@ namespace TplDataflow.Controllers
         private readonly string BasedFileName = $"{nameof(ActionBlockUsage)}-";
 
         /// <summary>
-        /// Post method to illustrate <see cref="ActionBlock{TInput}" />. Generates a text file.
+        /// Post method to illustrate <see cref="ActionBlock{TInput}" />.
+        /// Generates a text file.
         /// </summary>
         /// <param name="aNumber">A number to determine how many times lines will be repeated</param>
         [HttpPost]
@@ -95,7 +97,8 @@ namespace TplDataflow.Controllers
         #region TransformManyBlockUsage
 
         /// <summary>
-        /// Post method to illustrate <see cref="TransformManyBlock{TInput, TOutput}" />. Retrieves some metadatas from an input string to split.
+        /// Post method to illustrate <see cref="TransformManyBlock{TInput, TOutput}" />.
+        /// Retrieves some metadatas from an input string to split.
         /// </summary>
         /// <param name="stringToSplit">Input string to split by the char '#'<br />
         ///   <code>

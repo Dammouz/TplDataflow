@@ -17,7 +17,8 @@ namespace TplDataflow.Controllers
         #region BroadcastBlockUsage
 
         /// <summary>
-        /// Post method to illustrate <see cref="BroadcastBlock{T}" />. Display a sequence of strings broadcasted.
+        /// Post method to illustrate <see cref="BroadcastBlock{T}" />.
+        /// Display a sequence of strings broadcasted.
         /// </summary>
         /// <param name="numberOfIteration">Number of iterations</param>
         /// <returns>A List of 'numberOfIteration' strings</returns>
@@ -68,7 +69,8 @@ namespace TplDataflow.Controllers
         #region BufferBlockUsage
 
         /// <summary>
-        /// Post method to illustrate <see cref="BufferBlock{T}" />. Display a sequence of strings buffered.
+        /// Post method to illustrate <see cref="BufferBlock{T}" />.
+        /// Display a sequence of strings buffered.
         /// </summary>
         /// <param name="numberOfIteration">Number of iterations</param>
         /// <returns>A List of 'numberOfIteration' strings</returns>
@@ -119,7 +121,8 @@ namespace TplDataflow.Controllers
         #region BufferBlockUsageWithBoundedCapacity
 
         /// <summary>
-        /// Post method to illustrate <see cref="BufferBlock{T}" /> and <see cref="DataflowBlockOptions.BoundedCapacity" />. Display a sequence of strings buffered.
+        /// Post method to illustrate <see cref="BufferBlock{T}" /> and <see cref="DataflowBlockOptions.BoundedCapacity" />.
+        /// Display a sequence of strings buffered.
         /// </summary>
         /// <param name="numberOfIteration">Number of iterations</param>
         /// <param name="capacity">Capacity of the bounded <see cref="ActionBlock{T}" /></param>
@@ -174,7 +177,8 @@ namespace TplDataflow.Controllers
         #region BufferBlockUsageWithFilters
 
         /// <summary>
-        /// Post method to illustrate <see cref="BufferBlock{T}" />. Display a sequence of strings buffered with filters.
+        /// Post method to illustrate <see cref="BufferBlock{T}" />.
+        /// Display a sequence of strings buffered with filters.
         /// </summary>
         /// <param name="numberOfIteration">Number of iterations</param>
         /// <param name="valueToFilterForSub1">The value that Subscriber 1 must filfter</param>
@@ -238,5 +242,122 @@ namespace TplDataflow.Controllers
         }
 
         #endregion BufferBlockUsageWithFilters
+
+        #region BufferBlockUsageWithFiltersAndNullTarget
+
+        /// <summary>
+        /// Post method to illustrate <see cref="BufferBlock{T}" />.
+        /// Display a sequence of strings buffered with filters and <see cref="DataflowBlock.NullTarget{T}" /> block.
+        /// </summary>
+        /// <param name="numberOfIteration">Number of iterations</param>
+        /// <param name="valueToFilterForSub1">The value that Subscriber 1 must filfter</param>
+        /// <param name="valueToFilterForSub2">The value that Subscriber 2 must filfter</param>
+        /// <returns>A List of 'numberOfIteration' strings</returns>
+        [HttpPost]
+        [Route(nameof(BufferBlockUsageWithFiltersAndNullTarget))]
+        public IEnumerable<string> BufferBlockUsageWithFiltersAndNullTarget(int numberOfIteration, int valueToFilterForSub1, int valueToFilterForSub2)
+        {
+            Console.WriteLine($"Inside {nameof(TplDataflow2BufferingBlocksController)} - {nameof(BufferBlockUsageWithFiltersAndNullTarget)}");
+
+            // Convert input int into char
+            var charToFilterForSub1 = (char)(valueToFilterForSub1 % 10 + 0x30);
+            var char1ToFilterForSub2 = (char)(valueToFilterForSub2 % 10 + 0x30);
+            var char2ToFilterForSub2 = (char)(valueToFilterForSub2 % 10 + 0x31);
+            var char3ToFilterForSub2 = (char)(valueToFilterForSub2 % 10 + 0x32);
+
+            var strings = new BlockingCollection<string>
+            {
+                $"Sub 1 - Will filter and keep only input containing '{charToFilterForSub1}'",
+                $"Sub 2 - Will filter and keep only input containing '{char1ToFilterForSub2}' and '{char2ToFilterForSub2}' and '{char3ToFilterForSub2}'",
+            };
+
+            // Create the members of the pipeline.
+            var bufferBlockGivenInputToSubscribers = new BufferBlock<string>();
+            var actionBlockSubscriber1 = new ActionBlock<string>(stringInput =>
+                Functions.AddInputIntoTheGivenList(strings, stringInput, "Sub 1 abc")
+            );
+            var actionBlockSubscriber2 = new ActionBlock<string>(stringInput =>
+                Functions.AddInputIntoTheGivenList(strings, stringInput, "Sub 2 def")
+            );
+
+            // Connect the dataflow blocks to form a pipeline.
+            bufferBlockGivenInputToSubscribers.LinkTo(actionBlockSubscriber1, DataflowOptions.LinkOptions,
+                s => s.Contains(charToFilterForSub1)
+            );
+            bufferBlockGivenInputToSubscribers.LinkTo(actionBlockSubscriber2, DataflowOptions.LinkOptions,
+                s => s.IndexOfAny(new[] { char1ToFilterForSub2, char2ToFilterForSub2, char3ToFilterForSub2 }) > 0
+            );
+            // All non filter items are not processed anymore.
+            bufferBlockGivenInputToSubscribers.LinkTo(DataflowBlock.NullTarget<string>());
+
+            // Start BufferBlockUsageWithFiltersAndNullTarget pipeline with the input values.
+            for (var i = 1; i <= numberOfIteration; i++)
+            {
+                bufferBlockGivenInputToSubscribers.Post($"Value = {i}");
+            }
+
+            // Mark the head of the pipeline as complete.
+            bufferBlockGivenInputToSubscribers.Complete();
+
+            // Waiting block to receive all post input.
+            Task.WaitAll(actionBlockSubscriber1.Completion,
+                         actionBlockSubscriber2.Completion);
+
+            return strings.OrderBy(s => s);
+        }
+
+        #endregion BufferBlockUsageWithFiltersAndNullTarget
+
+        #region WriteOnceBlockUsage
+
+        /// <summary>
+        /// Post method to illustrate <see cref="WriteOnceBlock{T}" />.
+        /// Display a sequence of strings broadcasted.
+        /// </summary>
+        /// <param name="numberOfIteration">Number of iterations</param>
+        /// <returns>A List of 'numberOfIteration' strings</returns>
+        [HttpPost]
+        [Route(nameof(WriteOnceBlockUsage))]
+        public IEnumerable<string> WriteOnceBlockUsage(int numberOfIteration)
+        {
+            Console.WriteLine($"Inside {nameof(TplDataflow2BufferingBlocksController)} - {nameof(WriteOnceBlockUsage)}");
+
+            var strings = new BlockingCollection<string>();
+
+            // Create the members of the pipeline.
+            var WriteOnceBlockGivenInputToSubscribers = new WriteOnceBlock<string>(input => input);
+            var actionBlockSubscriber1 = new ActionBlock<string>(stringInput =>
+                Functions.AddInputIntoTheGivenList(strings, stringInput, "Sub 1")
+            );
+            var actionBlockSubscriber2 = new ActionBlock<string>(stringInput =>
+                Functions.AddInputIntoTheGivenList(strings, stringInput, "Sub 2")
+            );
+            var actionBlockSubscriber3 = new ActionBlock<string>(stringInput =>
+                Functions.AddInputIntoTheGivenList(strings, stringInput, "Sub 3")
+            );
+
+            // Connect the dataflow blocks to form a pipeline.
+            WriteOnceBlockGivenInputToSubscribers.LinkTo(actionBlockSubscriber1, DataflowOptions.LinkOptions);
+            WriteOnceBlockGivenInputToSubscribers.LinkTo(actionBlockSubscriber2, DataflowOptions.LinkOptions);
+            WriteOnceBlockGivenInputToSubscribers.LinkTo(actionBlockSubscriber3, DataflowOptions.LinkOptions);
+
+            // Start WriteOnceBlockUsage pipeline with the input values.
+            for (var i = 1; i <= numberOfIteration; i++)
+            {
+                WriteOnceBlockGivenInputToSubscribers.Post($"Value = {i}");
+            }
+
+            // Mark the head of the pipeline as complete.
+            WriteOnceBlockGivenInputToSubscribers.Complete();
+
+            // Waiting block to receive all post input.
+            Task.WaitAll(actionBlockSubscriber1.Completion,
+                         actionBlockSubscriber2.Completion,
+                         actionBlockSubscriber3.Completion);
+
+            return strings;
+        }
+
+        #endregion WriteOnceBlockUsage
     }
 }
