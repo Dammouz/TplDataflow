@@ -329,7 +329,7 @@ namespace TplDataflow.Controllers
         #region BufferBlockUsageWithFilters
 
         /// <summary>
-        /// Post method to illustrate <see cref="BufferBlock{T}" />. Display a sequence of strings buffered.
+        /// Post method to illustrate <see cref="BufferBlock{T}" />. Display a sequence of strings buffered with filters.
         /// </summary>
         /// <param name="numberOfIteration">Number of iterations</param>
         /// <param name="valueToFilterForSub1">The value that Subscriber 1 must filfter</param>
@@ -341,7 +341,7 @@ namespace TplDataflow.Controllers
         {
             Console.WriteLine($"Inside {nameof(TplDataflowController)} - {nameof(BufferBlockUsageWithFilters)}");
 
-            // Convert into char
+            // Convert input int into char
             var charToFilterForSub1 = (char)(valueToFilterForSub1 % 10 + 0x30);
             var char1ToFilterForSub2 = (char)(valueToFilterForSub2 % 10 + 0x30);
             var char2ToFilterForSub2 = (char)(valueToFilterForSub2 % 10 + 0x31);
