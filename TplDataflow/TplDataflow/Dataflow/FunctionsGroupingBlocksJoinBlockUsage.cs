@@ -5,21 +5,31 @@ namespace TplDataflow.Dataflow
 {
     internal static partial class Functions
     {
-        private static int _counter = 0;
+        private static int _counterForJoinBlockUsage = 0;
 
-        internal static void ClearCounter()
+        internal static void ClearCounterForJoinBlockUsage()
         {
-            _counter = 0;
+            _counterForJoinBlockUsage = 0;
         }
 
-        internal static void DisplayByGroups(IDictionary<string, string[]> ouputCollection, string[] batchedInput)
+        internal static int Noop(int i)
         {
-            ouputCollection.Add($"Batch number {_counter++}", batchedInput);
+            return i;
+        }
+
+        internal static int Square(int i)
+        {
+            return i * i;
+        }
+
+        internal static double MultiplyByPi(int i)
+        {
+            return i * Math.PI;
         }
 
         internal static void FormatTupleForTheOuputCollection(IDictionary<string, string[]> ouputCollection, Tuple<int, int, double> resultOfBothTransformBlock)
         {
-            ouputCollection.Add($"Iteration number {_counter++}",
+            ouputCollection.Add($"Iteration number {_counterForJoinBlockUsage++}",
                 new[]
                 {
                     $"Item 1 - Noop   : {resultOfBothTransformBlock.Item1}",

@@ -28,7 +28,7 @@ namespace TplDataflow.Controllers
             Console.WriteLine($"Inside {nameof(TplDataflow3GroupingBlocksController)} - {nameof(BatchBlockUsage)}");
 
             var ouputCollection = new Dictionary<string, string[]>();
-            Functions.ClearCounter();
+            Functions.ClearCounterForBatchBlockUsage();
 
             // Create the members of the pipeline.
             var batchBlockWithSizeGivenInInput = new BatchBlock<string>(batchsize);
@@ -71,13 +71,19 @@ namespace TplDataflow.Controllers
             Console.WriteLine($"Inside {nameof(TplDataflow3GroupingBlocksController)} - {nameof(JoinBlockUsage)}");
 
             var ouputCollection = new Dictionary<string, string[]>();
-            Functions.ClearCounter();
+            Functions.ClearCounterForJoinBlockUsage();
 
             // Create the members of the pipeline.
             var broadCastBlock = new BroadcastBlock<int>(i => i);
-            var transformBlockDoNothing = new TransformBlock<int, int>(i => i);
-            var transformBlockSquare = new TransformBlock<int, int>(i => i * i);
-            var transformBlockMultipleByPi = new TransformBlock<int, double>(i => i * Math.PI);
+            var transformBlockDoNothing = new TransformBlock<int, int>(i =>
+                Functions.Noop(i)
+            );
+            var transformBlockSquare = new TransformBlock<int, int>(i =>
+                Functions.Square(i)
+            );
+            var transformBlockMultipleByPi = new TransformBlock<int, double>(i =>
+                Functions.MultiplyByPi(i)
+            );
             var joinBlock = new JoinBlock<int, int, double>();
             var processorBlock = new ActionBlock<Tuple<int, int, double>>(tuple =>
                 Functions.FormatTupleForTheOuputCollection(ouputCollection, tuple)
