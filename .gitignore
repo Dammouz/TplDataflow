@@ -350,3 +350,7 @@ MigrationBackup/
 
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
+
+# Ignore downloaded images and created data as sample
+TplDataflow/TplDataflow/_dataflowImg/*
+TplDataflow/TplDataflow/_dataflowTxt/*
