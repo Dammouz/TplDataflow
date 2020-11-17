@@ -312,48 +312,39 @@ namespace TplDataflow.Controllers
 
         /// <summary>
         /// Post method to illustrate <see cref="WriteOnceBlock{T}" />.
-        /// Display a sequence of strings broadcasted.
+        /// Display a sequence of strings going throught WriteOnceBlock.
         /// </summary>
         /// <param name="numberOfIteration">Number of iterations</param>
-        /// <returns>A List of 'numberOfIteration' strings</returns>
+        /// <param name="minValue">First value of iteration</param>
+        /// <returns>The only string that is consume by the block</returns>
         [HttpPost]
         [Route(nameof(WriteOnceBlockUsage))]
-        public IEnumerable<string> WriteOnceBlockUsage(int numberOfIteration)
+        public IEnumerable<string> WriteOnceBlockUsage(int numberOfIteration, int minValue)
         {
             Console.WriteLine($"Inside {nameof(TplDataflow2BufferingBlocksController)} - {nameof(WriteOnceBlockUsage)}");
 
             var strings = new BlockingCollection<string>();
 
             // Create the members of the pipeline.
-            var WriteOnceBlockGivenInputToSubscribers = new WriteOnceBlock<string>(input => input);
-            var actionBlockSubscriber1 = new ActionBlock<string>(stringInput =>
-                Functions.AddInputIntoTheGivenList(strings, stringInput, "Sub 1")
-            );
-            var actionBlockSubscriber2 = new ActionBlock<string>(stringInput =>
-                Functions.AddInputIntoTheGivenList(strings, stringInput, "Sub 2")
-            );
-            var actionBlockSubscriber3 = new ActionBlock<string>(stringInput =>
-                Functions.AddInputIntoTheGivenList(strings, stringInput, "Sub 3")
+            var WriteOnceBlockGivenInputToASubscriber = new WriteOnceBlock<string>(null);
+            var actionBlockSubscriber = new ActionBlock<string>(stringInput =>
+                Functions.AddInputIntoTheGivenList(strings, stringInput, "Subscriber")
             );
 
             // Connect the dataflow blocks to form a pipeline.
-            WriteOnceBlockGivenInputToSubscribers.LinkTo(actionBlockSubscriber1, DataflowOptions.LinkOptions);
-            WriteOnceBlockGivenInputToSubscribers.LinkTo(actionBlockSubscriber2, DataflowOptions.LinkOptions);
-            WriteOnceBlockGivenInputToSubscribers.LinkTo(actionBlockSubscriber3, DataflowOptions.LinkOptions);
+            WriteOnceBlockGivenInputToASubscriber.LinkTo(actionBlockSubscriber, DataflowOptions.LinkOptions);
 
             // Start WriteOnceBlockUsage pipeline with the input values.
-            for (var i = 1; i <= numberOfIteration; i++)
+            for (var i = minValue; i <= minValue + numberOfIteration; i++)
             {
-                WriteOnceBlockGivenInputToSubscribers.Post($"Value = {i}");
+                WriteOnceBlockGivenInputToASubscriber.Post($"Value = {i}");
             }
 
             // Mark the head of the pipeline as complete.
-            WriteOnceBlockGivenInputToSubscribers.Complete();
+            WriteOnceBlockGivenInputToASubscriber.Complete();
 
-            // Waiting block to receive all post input.
-            Task.WaitAll(actionBlockSubscriber1.Completion,
-                         actionBlockSubscriber2.Completion,
-                         actionBlockSubscriber3.Completion);
+            // Wait for the last block in the pipeline to process all messages.
+            actionBlockSubscriber.Completion.Wait();
 
             return strings;
         }
