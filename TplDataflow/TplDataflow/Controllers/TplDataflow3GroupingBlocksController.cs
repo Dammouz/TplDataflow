@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.AspNetCore.Mvc;
 using TplDataflow.Dataflow;
@@ -11,10 +12,6 @@ namespace TplDataflow.Controllers
     [ApiController]
     public class TplDataflow3GroupingBlocksController : ControllerBase
     {
-        // C. Grouping Blocks
-        // C.2. JoinBlock(T1, T2, ...)
-        // C.3. BatchedJoinBlock(T1, T2, ...)
-
         #region BatchBlockUsage
 
         /// <summary>
@@ -31,6 +28,7 @@ namespace TplDataflow.Controllers
             Console.WriteLine($"Inside {nameof(TplDataflow3GroupingBlocksController)} - {nameof(BatchBlockUsage)}");
 
             var ouputCollection = new Dictionary<string, string[]>();
+            Functions.ClearCounter();
 
             // Create the members of the pipeline.
             var batchBlockWithSizeGivenInInput = new BatchBlock<string>(batchsize);
@@ -57,5 +55,62 @@ namespace TplDataflow.Controllers
         }
 
         #endregion BatchBlockUsage
+
+        #region JoinBlockUsage
+
+        /// <summary>
+        /// Post method to illustrate <see cref="JoinBlock{T1,T2,T3}" />.
+        /// Retrieves a collection of transformed and joined data.
+        /// </summary>
+        /// <param name="numberOfIteration">Number of iterations to produce</param>
+        /// <returns>A formatted collection containing output of the <see cref="JoinBlock{T1,T2,T3}" /></returns>
+        [HttpPost]
+        [Route(nameof(JoinBlockUsage))]
+        public IDictionary<string, string[]> JoinBlockUsage(int numberOfIteration)
+        {
+            Console.WriteLine($"Inside {nameof(TplDataflow3GroupingBlocksController)} - {nameof(JoinBlockUsage)}");
+
+            var ouputCollection = new Dictionary<string, string[]>();
+            Functions.ClearCounter();
+
+            // Create the members of the pipeline.
+            var broadCastBlock = new BroadcastBlock<int>(i => i);
+            var transformBlockDoNothing = new TransformBlock<int, int>(i => i);
+            var transformBlockSquare = new TransformBlock<int, int>(i => i * i);
+            var transformBlockMultipleByPi = new TransformBlock<int, double>(i => i * Math.PI);
+            var joinBlock = new JoinBlock<int, int, double>();
+            var processorBlock = new ActionBlock<Tuple<int, int, double>>(tuple =>
+                Functions.FormatTupleForTheOuputCollection(ouputCollection, tuple)
+            );
+
+            // Connect the dataflow blocks to form a pipeline.
+            broadCastBlock.LinkTo(transformBlockDoNothing, DataflowOptions.LinkOptions);
+            broadCastBlock.LinkTo(transformBlockSquare, DataflowOptions.LinkOptions);
+            broadCastBlock.LinkTo(transformBlockMultipleByPi, DataflowOptions.LinkOptions);
+            transformBlockDoNothing.LinkTo(joinBlock.Target1);
+            transformBlockSquare.LinkTo(joinBlock.Target2);
+            transformBlockMultipleByPi.LinkTo(joinBlock.Target3);
+            joinBlock.LinkTo(processorBlock, DataflowOptions.LinkOptions);
+
+            // Start JoinBlockUsage pipeline with the input values.
+            for (var i = 0; i <= numberOfIteration; i++)
+            {
+                broadCastBlock.Post(i);
+            }
+
+            // Mark the head of the pipeline as complete.
+            broadCastBlock.Complete();
+
+            // Wait for the last block in the pipeline to process all messages.
+            Task.WhenAll(transformBlockDoNothing.Completion,
+                         transformBlockSquare.Completion,
+                         transformBlockMultipleByPi.Completion)
+                .ContinueWith(_ => joinBlock.Complete());
+            processorBlock.Completion.Wait();
+
+            return ouputCollection;
+        }
+
+        #endregion JoinBlockUsage
     }
 }
