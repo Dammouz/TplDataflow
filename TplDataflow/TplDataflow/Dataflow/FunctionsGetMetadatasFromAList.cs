@@ -67,7 +67,7 @@ namespace TplDataflow.Dataflow
                 var fileName = CommonHelpers.MakeValidFileName(Path.GetFileName(url));
                 var imagePath = Path.Combine(directoryPath, fileName);
 
-                using (WebClient client = new WebClient())
+                using (var client = new WebClient())
                 {
                     client.DownloadFile(url, imagePath);
                 }

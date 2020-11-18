@@ -12,7 +12,7 @@ namespace TplDataflow.Controllers
     [Produces("application/json")]
     [Route("tpldataflow-api")]
     [ApiController]
-    public class TplDataflow9FullSampleController : ControllerBase
+    public class TplDataflow9FullSampleControllerWithExecutionBlocks : ControllerBase
     {
         private const string SavedImageDirectory = @".\_dataflowImg\";
         private const string DefaultLink = "https://raw.githubusercontent.com/Dammouz/TplDataflow/master/WikimediaPicturesOfTheDayNovemberList.txt";
@@ -33,7 +33,7 @@ namespace TplDataflow.Controllers
         [Route(nameof(GetMetadatasFromAList))]
         public IEnumerable<IMetaData> GetMetadatasFromAList(string pathToFile, int numberOfLines, bool order = false)
         {
-            Console.WriteLine($"Inside {nameof(TplDataflow9FullSampleController)} - {nameof(GetMetadatasFromAList)}");
+            Console.WriteLine($"Inside {nameof(TplDataflow9FullSampleControllerWithExecutionBlocks)} - {nameof(GetMetadatasFromAList)}");
             CommonHelpers.CleanWorkingDirectory(SavedImageDirectory);
             var listOfMetadata = new List<IMetaData>();
 
