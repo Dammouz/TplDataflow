@@ -118,5 +118,63 @@ namespace TplDataflow.Controllers
         }
 
         #endregion JoinBlockUsage
+
+        #region BatchedJoinBlockUsage
+
+        /// <summary>
+        /// Post method to illustrate <see cref="BatchedJoinBlock{T1,T2,T3}" />.
+        /// Retrieves a collection of transformed batched and joined data.
+        /// </summary>
+        /// <param name="numberOfIteration">Number of iterations to produce</param>
+        /// <param name="batchsize">Size of the buffer of the <see cref="BatchedJoinBlock{T1,T2,T3}" /></param>
+        /// <returns>A collection produces</returns>
+        [HttpPost]
+        [Route(nameof(BatchedJoinBlockUsage))]
+        public IDictionary<string, string[]> BatchedJoinBlockUsage(int numberOfIteration, int batchsize)
+        {
+            Console.WriteLine($"Inside {nameof(TplDataflow3GroupingBlocksController)} - {nameof(BatchedJoinBlockUsage)}");
+
+            var ouputCollection = new Dictionary<string, string[]>();
+            Functions.ClearCounterForBatchedJoinBlockUsage();
+
+            // Create the members of the pipeline.
+            var broadCastBlock = new BroadcastBlock<int>(i => i);
+            var transformBlockDoNothing = new TransformBlock<int, int>(i => i);
+            var transformBlockSquare = new TransformBlock<int, int>(i => i * i);
+            var transformBlockMultipleByPi = new TransformBlock<int, double>(i => i * Math.PI);
+            var batchedJoinBlock = new BatchedJoinBlock<int, int, double>(batchsize);
+            var processorBlock = new ActionBlock<Tuple<IList<int>, IList<int>, IList<double>>>(tuple =>
+                Functions.FormatTupleForTheOuputCollection(ouputCollection, tuple)
+            );
+
+            // Connect the dataflow blocks to form a pipeline.
+            broadCastBlock.LinkTo(transformBlockDoNothing, DataflowOptions.LinkOptions);
+            broadCastBlock.LinkTo(transformBlockSquare, DataflowOptions.LinkOptions);
+            broadCastBlock.LinkTo(transformBlockMultipleByPi, DataflowOptions.LinkOptions);
+            transformBlockDoNothing.LinkTo(batchedJoinBlock.Target1);
+            transformBlockSquare.LinkTo(batchedJoinBlock.Target2);
+            transformBlockMultipleByPi.LinkTo(batchedJoinBlock.Target3);
+            batchedJoinBlock.LinkTo(processorBlock, DataflowOptions.LinkOptions);
+
+            // Start BatchedJoinBlockUsage pipeline with the input values.
+            for (var i = 0; i < numberOfIteration; i++)
+            {
+                broadCastBlock.Post(i);
+            }
+
+            // Mark the head of the pipeline as complete.
+            broadCastBlock.Complete();
+
+            // Wait for the last block in the pipeline to process all messages.
+            Task.WhenAll(transformBlockDoNothing.Completion,
+                         transformBlockSquare.Completion,
+                         transformBlockMultipleByPi.Completion)
+                .ContinueWith(_ => batchedJoinBlock.Complete());
+            processorBlock.Completion.Wait();
+
+            return ouputCollection;
+        }
+
+        #endregion BatchedJoinBlockUsage
     }
 }
