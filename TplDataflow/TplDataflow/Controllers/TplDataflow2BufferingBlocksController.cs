@@ -9,6 +9,7 @@ using TplDataflow.Dataflow;
 
 namespace TplDataflow.Controllers
 {
+    //[ApiExplorerSettings(IgnoreApi = true)]
     [Produces("application/json")]
     [Route("tpldataflow-api")]
     [ApiController]
